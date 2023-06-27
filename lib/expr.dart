@@ -10,6 +10,7 @@ abstract interface class ExprVisitor<R> {
   R visitGroupingExpr(Grouping expr);
   R visitLiteralExpr(Literal expr);
   R visitUnaryExpr(Unary expr);
+  R visitVariableExpr(Variable expr);
 }
 
 class Ternary extends Expr {
@@ -73,5 +74,17 @@ class Unary extends Expr {
   @override
   R accept<R>(ExprVisitor<R> visitor) {
     return visitor.visitUnaryExpr(this);
+  }
+}
+
+
+class Variable extends Expr {
+  Variable(this.name);
+
+  final Token name;
+
+  @override
+  R accept<R>(ExprVisitor<R> visitor) {
+    return visitor.visitVariableExpr(this);
   }
 }

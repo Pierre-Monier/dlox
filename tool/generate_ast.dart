@@ -14,17 +14,31 @@ class GenerateAst {
       'Grouping : Expr expression',
       'Literal  : Object? value',
       'Unary    : Token operator, Expr right',
+      'Variable : Token name'
+    ], extraLines: [
+      "import 'token.dart';"
+    ]);
+    _defineAst(outputDir, 'Stmt', [
+      'Expression  : Expr expression',
+      'Print   : Expr expression',
+      'Var : Token name, Expr? initializer',
+    ], extraLines: [
+      "import 'expr.dart';",
+      "import 'token.dart';"
     ]);
   }
 
-  static void _defineAst(
-      String outputDir, String baseName, List<String> types) {
+  static void _defineAst(String outputDir, String baseName, List<String> types,
+      {List<String> extraLines = const []}) {
     final path = outputDir + "/" + baseName.toLowerCase() + ".dart";
     final exprFile = File(path);
 
     final writer = exprFile.openWrite();
 
-    writer.writeln("import 'token.dart';");
+    for (final line in extraLines) {
+      writer.writeln(line);
+    }
+
     writer.writeln();
     writer.writeln('abstract class $baseName {');
     writer.writeln("  R accept<R>(${baseName}Visitor<R> visitor);");

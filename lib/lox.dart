@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'ast_printer.dart';
 import 'interpreter.dart';
 import 'parser.dart';
 import 'scanner.dart';
@@ -42,20 +41,19 @@ class Lox {
   }
 
   static _run(String source) {
-    // TODO challenge in chapter 7
     final scanner = Scanner(source);
     final tokens = scanner.scanTokens();
 
     final parser = Parser(tokens);
-    final expr = parser.parse();
+    final statements = parser.parse();
 
     if (hadError) return;
 
-    if (expr == null) {
-      print('Synthax tree creation failed');
+    if (statements == null) {
+      print('Erro while parsing');
     } else {
-      print(AstPrinter().print(expr));
-      interpreter.interpret(expr);
+      // print(AstPrinter().print(expr));
+      interpreter.interpret(statements);
     }
   }
 

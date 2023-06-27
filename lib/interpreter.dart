@@ -1,16 +1,21 @@
+import 'environment.dart';
 import 'expr.dart';
 import 'lox.dart';
+import 'stmt.dart';
 import 'token.dart';
 import 'token_type.dart';
 
-class Interpreter implements ExprVisitor<Object?> {
+class Interpreter implements ExprVisitor<Object?>, StmtVisitor<void> {
   static const _notNumberOrStringErrorMessage =
       'Operands must be two numbers or two strings.';
 
-  void interpret(Expr expression) {
+  final _environment = Environment();
+
+  void interpret(List<Stmt> statements) {
     try {
-      final value = _evaluate(expression);
-      print(_stringify(value));
+      for (final statement in statements) {
+        _execute(statement);
+      }
     } on RuntimeError catch (e) {
       Lox.runtimeError(e);
     }
@@ -112,6 +117,10 @@ class Interpreter implements ExprVisitor<Object?> {
     return expr.accept(this);
   }
 
+  void _execute(Stmt stmt) {
+    stmt.accept(this);
+  }
+
   bool _isTruthy(Object? object) {
     // Since we have a dynamically type language, we can't just break the code
     // when we have a type that must be considered as a boolean, instead we have
@@ -163,6 +172,32 @@ class Interpreter implements ExprVisitor<Object?> {
     } else {
       return _evaluate(expr.elseBranch);
     }
+  }
+
+  @override
+  void visitExpressionStmt(Expression stmt) {
+    _evaluate(stmt.expression);
+  }
+
+  @override
+  void visitPrintStmt(Print stmt) {
+    final value = _evaluate(stmt.expression);
+    print(_stringify(value));
+  }
+
+  @override
+  void visitVarStmt(Var stmt) {
+    Object? value;
+    if (stmt.initializer != null) {
+      value = _evaluate(stmt.initializer!);
+    }
+
+    _environment.define(stmt.name.lexeme, value);
+  }
+
+  @override
+  Object? visitVariableExpr(Variable expr) {
+    return _environment.get(expr.name);
   }
 }
 

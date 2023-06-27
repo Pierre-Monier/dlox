@@ -64,4 +64,10 @@ class AstPrinter implements ExprVisitor<String> {
     return _parenthesize(
         expr.condition.accept(this), [expr.thenBranch, expr.elseBranch]);
   }
+
+  @override
+  String visitVariableExpr(Variable expr) {
+    // TODO: implement visitVariableExpr
+    throw UnimplementedError();
+  }
 }
