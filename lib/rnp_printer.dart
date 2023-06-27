@@ -48,4 +48,10 @@ class RnpPrinter implements ExprVisitor<String> {
     // Not needed just want to try (1 + 2) * (4 - 3)
     throw UnimplementedError();
   }
+
+  @override
+  String visitTernaryExpr(Ternary expr) {
+    // TODO: implement visitTernaryExpr
+    throw UnimplementedError();
+  }
 }

@@ -22,15 +22,34 @@ class Parser {
   }
 
   Expr _comma() {
-    var expr = _equality();
+    var expr = _ternary();
 
     while (_match([TokenType.COMMA])) {
       final operator = _previous();
-      final right = _equality();
+      final right = _ternary();
       expr = Binary(expr, operator, right);
     }
 
     return expr;
+  }
+
+  Expr _ternary() {
+    Expr? expr;
+    final condition = _equality();
+    Expr thenBranch = Literal(null);
+    Expr elseBranch = Literal(null);
+
+    while (_match([TokenType.QUESTION_MARK])) {
+      thenBranch = _ternary();
+      expr = Ternary(condition, thenBranch, elseBranch);
+
+      _consume(TokenType.COLON, "Expect ':' after expression.");
+
+      elseBranch = _ternary();
+      expr = Ternary(condition, thenBranch, elseBranch);
+    }
+
+    return expr ?? condition;
   }
 
   Expr _equality() {

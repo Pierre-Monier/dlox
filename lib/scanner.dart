@@ -85,6 +85,13 @@ class Scanner {
       case '>':
         _addToken(
             _match('=') ? TokenType.GREATER_EQUAL : TokenType.GREATER, null);
+        break;
+      case '?':
+        _addToken(TokenType.QUESTION_MARK, null);
+        break;
+      case ':':
+        _addToken(TokenType.COLON, null);
+        break;
       case '/':
         if (_match('/')) {
           // A comment goes until the end of the line.

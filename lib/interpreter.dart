@@ -85,8 +85,7 @@ class Interpreter implements ExprVisitor<Object?> {
 
   @override
   Object? visitGroupingExpr(Grouping expr) {
-    _evaluate(expr.expression);
-    return null;
+    return _evaluate(expr.expression);
   }
 
   @override

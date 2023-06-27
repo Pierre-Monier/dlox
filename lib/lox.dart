@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'ast_printer.dart';
 import 'interpreter.dart';
 import 'parser.dart';
 import 'scanner.dart';
@@ -53,6 +54,7 @@ class Lox {
     if (expr == null) {
       print('Synthax tree creation failed');
     } else {
+      print(AstPrinter().print(expr));
       interpreter.interpret(expr);
     }
   }
