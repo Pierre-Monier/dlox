@@ -1,0 +1,7 @@
+#!/Users/pierremonier/Code/flutter/bin/dart
+
+import '../tool/generate_ast.dart';
+
+void main(List<String> arguments) {
+  GenerateAst.main(arguments);
+}

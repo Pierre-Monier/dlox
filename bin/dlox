@@ -1,0 +1,7 @@
+#!/Users/pierremonier/Code/flutter/bin/dart
+
+import '../lib/lox.dart';
+
+void main(List<String> arguments) {
+  Lox.main(arguments);
+}
