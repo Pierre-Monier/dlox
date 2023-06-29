@@ -6,6 +6,7 @@ abstract class Expr {
 
 abstract interface class ExprVisitor<R> {
   R visitTernaryExpr(Ternary expr);
+  R visitAssignExpr(Assign expr);
   R visitBinaryExpr(Binary expr);
   R visitGroupingExpr(Grouping expr);
   R visitLiteralExpr(Literal expr);
@@ -23,6 +24,19 @@ class Ternary extends Expr {
   @override
   R accept<R>(ExprVisitor<R> visitor) {
     return visitor.visitTernaryExpr(this);
+  }
+}
+
+
+class Assign extends Expr {
+  Assign(this.name, this.value);
+
+  final Token name;
+  final Expr value;
+
+  @override
+  R accept<R>(ExprVisitor<R> visitor) {
+    return visitor.visitAssignExpr(this);
   }
 }
 

@@ -57,6 +57,9 @@ class Parser {
     if (_match([TokenType.PRINT])) {
       return _printStatement();
     }
+    if (_match([TokenType.LEFT_BRACE])) {
+      return Block(_block());
+    }
 
     return _expressionStatement();
   }
@@ -65,6 +68,21 @@ class Parser {
     final value = _expression();
     _consume(TokenType.SEMICOLON, "Expect ';' after value.");
     return Print(value);
+  }
+
+  List<Stmt> _block() {
+    final statements = <Stmt>[];
+
+    while (!_check(TokenType.RIGHT_BRACE) && !_isAtEnd()) {
+      final statement = _declaration();
+
+      if (statement != null) {
+        statements.add(statement);
+      }
+    }
+
+    _consume(TokenType.RIGHT_BRACE, "Expect '}' after block.");
+    return statements;
   }
 
   Stmt _expressionStatement() {
@@ -78,12 +96,30 @@ class Parser {
   }
 
   Expr _comma() {
-    var expr = _ternary();
+    var expr = _assignment();
 
     while (_match([TokenType.COMMA])) {
       final operator = _previous();
-      final right = _ternary();
+      final right = _assignment();
       expr = Binary(expr, operator, right);
+    }
+
+    return expr;
+  }
+
+  Expr _assignment() {
+    final expr = _ternary();
+
+    if (_match([TokenType.EQUAL])) {
+      final equals = _previous();
+      final value = _assignment();
+
+      if (expr is Variable) {
+        final name = expr.name;
+        return Assign(name, value);
+      }
+
+      _error(equals, "Invalid assignment target.");
     }
 
     return expr;

@@ -9,7 +9,10 @@ class Interpreter implements ExprVisitor<Object?>, StmtVisitor<void> {
   static const _notNumberOrStringErrorMessage =
       'Operands must be two numbers or two strings.';
 
-  final _environment = Environment();
+  // Instead of mutation we could pass environment to every method that use it
+  var _environment = Environment(enclosing: null);
+
+  bool repl = false;
 
   void interpret(List<Stmt> statements) {
     try {
@@ -19,6 +22,35 @@ class Interpreter implements ExprVisitor<Object?>, StmtVisitor<void> {
     } on RuntimeError catch (e) {
       Lox.runtimeError(e);
     }
+  }
+
+  @override
+  void visitBlockStmt(Block stmt) {
+    _executeBlock(stmt.statements, Environment(enclosing: _environment));
+  }
+
+  @override
+  void visitExpressionStmt(Expression stmt) {
+    final result = _evaluate(stmt.expression);
+    if (repl) {
+      print(_stringify(result));
+    }
+  }
+
+  @override
+  void visitPrintStmt(Print stmt) {
+    final value = _evaluate(stmt.expression);
+    print(_stringify(value));
+  }
+
+  @override
+  void visitVarStmt(Var stmt) {
+    Object? value;
+    if (stmt.initializer != null) {
+      value = _evaluate(stmt.initializer!);
+    }
+
+    _environment.define(stmt.name.lexeme, value);
   }
 
   @override
@@ -83,6 +115,8 @@ class Interpreter implements ExprVisitor<Object?>, StmtVisitor<void> {
         return !_isEqual(left, right);
       case TokenType.EQUAL_EQUAL:
         return _isEqual(left, right);
+      case TokenType.COMMA:
+        return right;
       default:
         return null;
     }
@@ -113,12 +147,48 @@ class Interpreter implements ExprVisitor<Object?>, StmtVisitor<void> {
     }
   }
 
+  @override
+  Object? visitVariableExpr(Variable expr) {
+    return _environment.get(expr.name);
+  }
+
+  @override
+  Object? visitAssignExpr(Assign expr) {
+    final value = _evaluate(expr.value);
+
+    _environment.assign(expr.name, value);
+    return value;
+  }
+
+  @override
+  Object? visitTernaryExpr(Ternary expr) {
+    final condition = _evaluate(expr.condition);
+    if (_isTruthy(condition)) {
+      return _evaluate(expr.thenBranch);
+    } else {
+      return _evaluate(expr.elseBranch);
+    }
+  }
+
   Object? _evaluate(Expr expr) {
     return expr.accept(this);
   }
 
   void _execute(Stmt stmt) {
     stmt.accept(this);
+  }
+
+  void _executeBlock(List<Stmt> statements, Environment environment) {
+    final previous = _environment;
+    try {
+      _environment = environment;
+
+      for (final statement in statements) {
+        _execute(statement);
+      }
+    } finally {
+      _environment = previous;
+    }
   }
 
   bool _isTruthy(Object? object) {
@@ -162,42 +232,6 @@ class Interpreter implements ExprVisitor<Object?>, StmtVisitor<void> {
     }
 
     return object.toString();
-  }
-
-  @override
-  Object? visitTernaryExpr(Ternary expr) {
-    final condition = _evaluate(expr.condition);
-    if (_isTruthy(condition)) {
-      return _evaluate(expr.thenBranch);
-    } else {
-      return _evaluate(expr.elseBranch);
-    }
-  }
-
-  @override
-  void visitExpressionStmt(Expression stmt) {
-    _evaluate(stmt.expression);
-  }
-
-  @override
-  void visitPrintStmt(Print stmt) {
-    final value = _evaluate(stmt.expression);
-    print(_stringify(value));
-  }
-
-  @override
-  void visitVarStmt(Var stmt) {
-    Object? value;
-    if (stmt.initializer != null) {
-      value = _evaluate(stmt.initializer!);
-    }
-
-    _environment.define(stmt.name.lexeme, value);
-  }
-
-  @override
-  Object? visitVariableExpr(Variable expr) {
-    return _environment.get(expr.name);
   }
 }
 

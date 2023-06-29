@@ -10,6 +10,7 @@ class GenerateAst {
     final outputDir = args.single;
     _defineAst(outputDir, 'Expr', [
       'Ternary  : Expr condition, Expr thenBranch, Expr elseBranch',
+      'Assign   : Token name, Expr value',
       'Binary   : Expr left, Token operator, Expr right',
       'Grouping : Expr expression',
       'Literal  : Object? value',
@@ -19,6 +20,7 @@ class GenerateAst {
       "import 'token.dart';"
     ]);
     _defineAst(outputDir, 'Stmt', [
+      'Block   : List<Stmt> statements',
       'Expression  : Expr expression',
       'Print   : Expr expression',
       'Var : Token name, Expr? initializer',

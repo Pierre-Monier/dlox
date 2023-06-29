@@ -16,8 +16,10 @@ class Lox {
       print('Usage: dlox [script]');
       exit(64);
     } else if (args.length == 1) {
+      interpreter.repl = false;
       _runFile(args.single);
     } else {
+      interpreter.repl = true;
       _runPrompt();
     }
   }
