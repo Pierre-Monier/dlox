@@ -1,6 +1,9 @@
 import 'environment.dart';
 import 'expr.dart';
 import 'lox.dart';
+import 'lox_callable.dart';
+import 'lox_clock.dart';
+import 'lox_function.dart';
 import 'stmt.dart';
 import 'token.dart';
 import 'token_type.dart';
@@ -10,9 +13,14 @@ class Interpreter implements ExprVisitor<Object?>, StmtVisitor<void> {
       'Operands must be two numbers or two strings.';
 
   // Instead of mutation we could pass environment to every method that use it
-  var _environment = Environment(enclosing: null);
+  final _globals = Environment(enclosing: null);
+  late var _environment = _globals;
 
   bool repl = false;
+
+  Interpreter() {
+    _globals.define('clock', LoxClock());
+  }
 
   void interpret(List<Stmt> statements) {
     try {
@@ -26,7 +34,7 @@ class Interpreter implements ExprVisitor<Object?>, StmtVisitor<void> {
 
   @override
   void visitBlockStmt(Block stmt) {
-    _executeBlock(stmt.statements, Environment(enclosing: _environment));
+    executeBlock(stmt.statements, Environment(enclosing: _environment));
   }
 
   @override
@@ -62,11 +70,19 @@ class Interpreter implements ExprVisitor<Object?>, StmtVisitor<void> {
 
   @override
   void visitIfStmt(If stmt) {
-    if (_isTruthy(stmt.condition)) {
+    final condition = _evaluate(stmt.condition);
+
+    if (_isTruthy(condition)) {
       _execute(stmt.thenBranch);
     } else if (stmt.elseBranch != null) {
       _execute(stmt.elseBranch!);
     }
+  }
+
+  @override
+  void visitLFunctionStmt(LFunction stmt) {
+    final function = LoxFunction(stmt, _environment);
+    _environment.define(stmt.name.lexeme, function);
   }
 
   @override
@@ -82,7 +98,7 @@ class Interpreter implements ExprVisitor<Object?>, StmtVisitor<void> {
         if (left is num && right is num) {
           return left + right;
         } else if (left is String || right is String) {
-          return '${left is int ? left.toInt() : left}${right is int ? right.toInt() : 'right'}';
+          return '$left$right';
         }
 
         throw RuntimeError(expr.operator, _notNumberOrStringErrorMessage);
@@ -179,11 +195,32 @@ class Interpreter implements ExprVisitor<Object?>, StmtVisitor<void> {
   @override
   Object? visitTernaryExpr(Ternary expr) {
     final condition = _evaluate(expr.condition);
+
     if (_isTruthy(condition)) {
       return _evaluate(expr.thenBranch);
     } else {
       return _evaluate(expr.elseBranch);
     }
+  }
+
+  @override
+  Object? visitCallExpr(Call expr) {
+    final callee = _evaluate(expr.callee);
+
+    final arguments = <Object?>[];
+    for (final argument in expr.arguments) {
+      arguments.add(_evaluate(argument));
+    }
+
+    if (callee is! LoxCallable) {
+      throw RuntimeError(expr.paren, 'Can only call functions and classes.');
+    }
+    if (arguments.length != callee.arity()) {
+      throw RuntimeError(expr.paren,
+          'Expected ${callee.arity} arguments but got ${arguments.length}.');
+    }
+
+    return callee.call(this, arguments);
   }
 
   @override
@@ -207,7 +244,7 @@ class Interpreter implements ExprVisitor<Object?>, StmtVisitor<void> {
     stmt.accept(this);
   }
 
-  void _executeBlock(List<Stmt> statements, Environment environment) {
+  void executeBlock(List<Stmt> statements, Environment environment) {
     final previous = _environment;
     try {
       _environment = environment;
@@ -262,6 +299,18 @@ class Interpreter implements ExprVisitor<Object?>, StmtVisitor<void> {
 
     return object.toString();
   }
+
+  @override
+  void visitReturnStmt(Return stmt) {
+    final value = switch (stmt.value) {
+      null => null,
+      var stmtValue => _evaluate(stmtValue)
+    };
+
+    // This is super weird but Exception let us break the execution of the
+    // LoxFunction and return the value to the caller.
+    throw ReturnException(value);
+  }
 }
 
 class RuntimeError implements Exception {
@@ -278,4 +327,10 @@ class RuntimeError implements Exception {
 
 class DivisionByZeroError extends RuntimeError {
   DivisionByZeroError(Token token) : super(token, 'Division by zero.');
+}
+
+class ReturnException implements Exception {
+  final Object? value;
+
+  ReturnException(this.value);
 }
