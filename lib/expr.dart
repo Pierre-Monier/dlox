@@ -10,6 +10,7 @@ abstract interface class ExprVisitor<R> {
   R visitBinaryExpr(Binary expr);
   R visitGroupingExpr(Grouping expr);
   R visitLiteralExpr(Literal expr);
+  R visitLogicalExpr(Logical expr);
   R visitUnaryExpr(Unary expr);
   R visitVariableExpr(Variable expr);
 }
@@ -75,6 +76,20 @@ class Literal extends Expr {
   @override
   R accept<R>(ExprVisitor<R> visitor) {
     return visitor.visitLiteralExpr(this);
+  }
+}
+
+
+class Logical extends Expr {
+  Logical(this.left, this.operator, this.right);
+
+  final Expr left;
+  final Token operator;
+  final Expr right;
+
+  @override
+  R accept<R>(ExprVisitor<R> visitor) {
+    return visitor.visitLogicalExpr(this);
   }
 }
 

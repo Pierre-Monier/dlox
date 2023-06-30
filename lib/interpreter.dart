@@ -44,6 +44,13 @@ class Interpreter implements ExprVisitor<Object?>, StmtVisitor<void> {
   }
 
   @override
+  void visitWhileStmt(While stmt) {
+    while (_isTruthy(_evaluate(stmt.condition))) {
+      _execute(stmt.body);
+    }
+  }
+
+  @override
   void visitVarStmt(Var stmt) {
     Object? value;
     if (stmt.initializer != null) {
@@ -51,6 +58,15 @@ class Interpreter implements ExprVisitor<Object?>, StmtVisitor<void> {
     }
 
     _environment.define(stmt.name.lexeme, value);
+  }
+
+  @override
+  void visitIfStmt(If stmt) {
+    if (_isTruthy(stmt.condition)) {
+      _execute(stmt.thenBranch);
+    } else if (stmt.elseBranch != null) {
+      _execute(stmt.elseBranch!);
+    }
   }
 
   @override
@@ -168,6 +184,19 @@ class Interpreter implements ExprVisitor<Object?>, StmtVisitor<void> {
     } else {
       return _evaluate(expr.elseBranch);
     }
+  }
+
+  @override
+  Object? visitLogicalExpr(Logical expr) {
+    final left = _evaluate(expr.left);
+
+    if (expr.operator.type == TokenType.OR) {
+      if (_isTruthy(left)) return left;
+    } else {
+      if (!_isTruthy(left)) return left;
+    }
+
+    return _evaluate(expr.right);
   }
 
   Object? _evaluate(Expr expr) {

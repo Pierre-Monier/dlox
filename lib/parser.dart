@@ -54,14 +54,84 @@ class Parser {
   }
 
   Stmt _statement() {
+    if (_match([TokenType.FOR])) {
+      // We are going to convert for loop into while loops
+      return _forStatement();
+    }
+    if (_match([TokenType.IF])) {
+      return _ifStatement();
+    }
     if (_match([TokenType.PRINT])) {
       return _printStatement();
+    }
+    if (_match([TokenType.WHILE])) {
+      return _whileStatement();
     }
     if (_match([TokenType.LEFT_BRACE])) {
       return Block(_block());
     }
 
     return _expressionStatement();
+  }
+
+  Stmt _forStatement() {
+    _consume(TokenType.LEFT_PAREN, "Expect '(' after 'for'.");
+
+    Stmt? initializer;
+    if (_match([TokenType.SEMICOLON])) {
+      initializer = null;
+    } else if (_match([TokenType.VAR])) {
+      initializer = _varDeclaration();
+    } else {
+      initializer = _expressionStatement();
+    }
+
+    Expr? condition;
+    if (!_check(TokenType.SEMICOLON)) {
+      condition = _expression();
+    }
+    _consume(TokenType.SEMICOLON, "Expect ';' after loop condition.");
+
+    Expr? increment;
+    if (!_check(TokenType.RIGHT_PAREN)) {
+      increment = _expression();
+    }
+    _consume(TokenType.RIGHT_PAREN, "Expect ')' after for clauses.");
+
+    var body = _statement();
+
+    if (increment != null) {
+      body = Block([
+        body,
+        Expression(increment),
+      ]);
+    }
+
+    if (condition == null) {
+      condition = Literal(true);
+    }
+
+    body = While(condition, body);
+
+    if (initializer != null) {
+      body = Block([initializer, body]);
+    }
+
+    return body;
+  }
+
+  Stmt _ifStatement() {
+    _consume(TokenType.LEFT_PAREN, "Expect '(' after 'if'.");
+    final condition = _expression();
+    _consume(TokenType.RIGHT_PAREN, "Expect ')' after if condition.");
+
+    final thenBranch = _statement();
+    Stmt? elseBranch;
+    if (_match([TokenType.ELSE])) {
+      elseBranch = _statement();
+    }
+
+    return If(condition, thenBranch, elseBranch);
   }
 
   Stmt _printStatement() {
@@ -83,6 +153,15 @@ class Parser {
 
     _consume(TokenType.RIGHT_BRACE, "Expect '}' after block.");
     return statements;
+  }
+
+  Stmt _whileStatement() {
+    _consume(TokenType.LEFT_PAREN, "Expect '(' after 'while'.");
+    final condition = _expression();
+    _consume(TokenType.RIGHT_PAREN, "Expect ')' after condition.");
+    final body = _statement();
+
+    return While(condition, body);
   }
 
   Stmt _expressionStatement() {
@@ -108,7 +187,7 @@ class Parser {
   }
 
   Expr _assignment() {
-    final expr = _ternary();
+    final expr = _or();
 
     if (_match([TokenType.EQUAL])) {
       final equals = _previous();
@@ -120,6 +199,30 @@ class Parser {
       }
 
       _error(equals, "Invalid assignment target.");
+    }
+
+    return expr;
+  }
+
+  Expr _or() {
+    var expr = _and();
+
+    while (_match([TokenType.OR])) {
+      final operator = _previous();
+      final right = _and();
+      expr = Logical(expr, operator, right);
+    }
+
+    return expr;
+  }
+
+  Expr _and() {
+    var expr = _ternary();
+
+    while (_match([TokenType.AND])) {
+      final operator = _previous();
+      final right = _ternary();
+      expr = Logical(expr, operator, right);
     }
 
     return expr;
