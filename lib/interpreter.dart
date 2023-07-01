@@ -2,8 +2,10 @@ import 'environment.dart';
 import 'expr.dart';
 import 'lox.dart';
 import 'lox_callable.dart';
+import 'lox_class.dart';
 import 'lox_clock.dart';
 import 'lox_function.dart';
+import 'lox_instance.dart';
 import 'stmt.dart';
 import 'token.dart';
 import 'token_type.dart';
@@ -14,6 +16,7 @@ class Interpreter implements ExprVisitor<Object?>, StmtVisitor<void> {
 
   // Instead of mutation we could pass environment to every method that use it
   final _globals = Environment(enclosing: null);
+  final _locals = <Expr, int>{};
   late var _environment = _globals;
 
   bool repl = false;
@@ -30,6 +33,10 @@ class Interpreter implements ExprVisitor<Object?>, StmtVisitor<void> {
     } on RuntimeError catch (e) {
       Lox.runtimeError(e);
     }
+  }
+
+  void resolve(Expr expr, int depth) {
+    _locals[expr] = depth;
   }
 
   @override
@@ -81,8 +88,35 @@ class Interpreter implements ExprVisitor<Object?>, StmtVisitor<void> {
 
   @override
   void visitLFunctionStmt(LFunction stmt) {
-    final function = LoxFunction(stmt, _environment);
+    final function = LoxFunction(stmt, _environment, false);
     _environment.define(stmt.name.lexeme, function);
+  }
+
+  @override
+  void visitReturnStmt(Return stmt) {
+    final value = switch (stmt.value) {
+      null => null,
+      var stmtValue => _evaluate(stmtValue)
+    };
+
+    // This is super weird but Exception let us break the execution of the
+    // LoxFunction and return the value to the caller.
+    throw ReturnException(value);
+  }
+
+  @override
+  void visitClassStmt(Class stmt) {
+    _environment.define(stmt.name.lexeme, null);
+
+    final methods = <String, LoxFunction>{};
+    for (final method in stmt.methods) {
+      final function =
+          LoxFunction(method, _environment, method.name.lexeme == 'init');
+      methods[method.name.lexeme] = function;
+    }
+
+    final klass = LoxClass(stmt.name.lexeme, methods);
+    _environment.assign(stmt.name, klass);
   }
 
   @override
@@ -181,7 +215,16 @@ class Interpreter implements ExprVisitor<Object?>, StmtVisitor<void> {
 
   @override
   Object? visitVariableExpr(Variable expr) {
-    return _environment.get(expr.name);
+    return _lookUpVariable(expr.name, expr);
+  }
+
+  Object? _lookUpVariable(Token name, Expr expr) {
+    final distance = _locals[expr];
+    if (distance != null) {
+      return _environment.getAt(distance, name.lexeme);
+    } else {
+      return _globals.get(name);
+    }
   }
 
   @override
@@ -189,6 +232,14 @@ class Interpreter implements ExprVisitor<Object?>, StmtVisitor<void> {
     final value = _evaluate(expr.value);
 
     _environment.assign(expr.name, value);
+    final distance = _locals[expr];
+
+    if (distance != null) {
+      _environment.assignAt(distance, expr.name, value);
+    } else {
+      _globals.assign(expr.name, value);
+    }
+
     return value;
   }
 
@@ -234,6 +285,34 @@ class Interpreter implements ExprVisitor<Object?>, StmtVisitor<void> {
     }
 
     return _evaluate(expr.right);
+  }
+
+  @override
+  Object? visitGetExpr(Get expr) {
+    final object = _evaluate(expr.object);
+    if (object is LoxInstance) {
+      return object.get(expr.name);
+    }
+
+    throw RuntimeError(expr.name, 'Only instances have properties.');
+  }
+
+  @override
+  Object? visitSetExpr(Set expr) {
+    final object = _evaluate(expr.object);
+
+    if (!(object is LoxInstance)) {
+      throw RuntimeError(expr.name, 'Only instances have fields.');
+    }
+
+    final value = _evaluate(expr.value);
+    object.set(expr.name, value);
+    return value;
+  }
+
+  @override
+  Object? visitThisExpr(This expr) {
+    return _lookUpVariable(expr.keyword, expr);
   }
 
   Object? _evaluate(Expr expr) {
@@ -298,18 +377,6 @@ class Interpreter implements ExprVisitor<Object?>, StmtVisitor<void> {
     }
 
     return object.toString();
-  }
-
-  @override
-  void visitReturnStmt(Return stmt) {
-    final value = switch (stmt.value) {
-      null => null,
-      var stmtValue => _evaluate(stmtValue)
-    };
-
-    // This is super weird but Exception let us break the execution of the
-    // LoxFunction and return the value to the caller.
-    throw ReturnException(value);
   }
 }
 

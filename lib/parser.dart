@@ -30,6 +30,9 @@ class Parser {
 
   Stmt? _declaration() {
     try {
+      if (_match([TokenType.CLASS])) {
+        return _classDeclaration();
+      }
       if (_match([TokenType.FUN])) {
         return _function("function");
       }
@@ -42,6 +45,23 @@ class Parser {
       _synchronize();
       return null;
     }
+  }
+
+  Stmt _classDeclaration() {
+    final name = _consume(TokenType.IDENTIFIER, "Expect class name.");
+    _consume(TokenType.LEFT_BRACE, "Expect '{' before class body.");
+
+    final methods = <LFunction>[];
+    while (!_check(TokenType.RIGHT_BRACE) && !_isAtEnd()) {
+      final function = _function("method");
+
+      if (function is LFunction) {
+        methods.add(function);
+      }
+    }
+
+    _consume(TokenType.RIGHT_BRACE, "Expect '}' after class body.");
+    return Class(name, methods);
   }
 
   Stmt _function(String kind) {
@@ -224,6 +244,8 @@ class Parser {
       if (expr is Variable) {
         final name = expr.name;
         return Assign(name, value);
+      } else if (expr is Get) {
+        return Set(expr.object, expr.name, value);
       }
 
       _error(equals, "Invalid assignment target.");
@@ -362,6 +384,10 @@ class Parser {
     while (true) {
       if (_match([TokenType.LEFT_PAREN])) {
         expr = _finishCall(expr);
+      } else if (_match([TokenType.DOT])) {
+        final name =
+            _consume(TokenType.IDENTIFIER, "Expect property name after '.'.");
+        expr = Get(expr, name);
       } else {
         break;
       }
@@ -378,6 +404,8 @@ class Parser {
     if (_match([TokenType.NUMBER, TokenType.STRING])) {
       return Literal(_previous().literal);
     }
+
+    if (_match([TokenType.THIS])) return This(_previous());
 
     if (_match([TokenType.IDENTIFIER])) {
       return Variable(_previous());

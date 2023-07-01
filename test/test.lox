@@ -1,8 +1,1 @@
-fun scope(a) {
-  var a = "local";
-  print a;
-}
-
-var a = "toto";
-scope(a);
-print a;
+print this;

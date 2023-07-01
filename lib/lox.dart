@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'interpreter.dart';
 import 'parser.dart';
+import 'resolver.dart';
 import 'scanner.dart';
 import 'token.dart';
 import 'token_type.dart';
@@ -54,7 +55,12 @@ class Lox {
     if (statements == null) {
       print('Erro while parsing');
     } else {
-      // print(AstPrinter().print(expr));
+      final resolver = Resolver(interpreter);
+      resolver.resolves(statements);
+
+      // Stop if there was a resolution error.
+      if (hadError) return;
+
       interpreter.interpret(statements);
     }
   }
