@@ -106,7 +106,21 @@ class Interpreter implements ExprVisitor<Object?>, StmtVisitor<void> {
 
   @override
   void visitClassStmt(Class stmt) {
+    Object? superclass;
+    if (stmt.superclass != null) {
+      superclass = _evaluate(stmt.superclass!);
+      if (superclass is! LoxClass) {
+        throw RuntimeError(stmt.superclass!.name,
+            'Superclass must be a class. ${superclass.runtimeType} is not a class.');
+      }
+    }
+
     _environment.define(stmt.name.lexeme, null);
+
+    if (stmt.superclass != null) {
+      _environment = Environment(enclosing: _environment);
+      _environment.define('super', superclass);
+    }
 
     final methods = <String, LoxFunction>{};
     for (final method in stmt.methods) {
@@ -115,7 +129,7 @@ class Interpreter implements ExprVisitor<Object?>, StmtVisitor<void> {
       methods[method.name.lexeme] = function;
     }
 
-    final klass = LoxClass(stmt.name.lexeme, methods);
+    final klass = LoxClass(stmt.name.lexeme, superclass as LoxClass?, methods);
     _environment.assign(stmt.name, klass);
   }
 
@@ -308,6 +322,24 @@ class Interpreter implements ExprVisitor<Object?>, StmtVisitor<void> {
     final value = _evaluate(expr.value);
     object.set(expr.name, value);
     return value;
+  }
+
+  @override
+  Object? visitSuperExpr(Super expr) {
+    final distance = _locals[expr]!;
+    final superclass = _environment.getAt(distance, 'super') as LoxClass?;
+
+    // "this" is always one level nearer than "super"'s environment.
+    final object = _environment.getAt(distance - 1, 'this') as LoxInstance;
+
+    final method = superclass?.findMethod(expr.method.lexeme);
+
+    if (method == null) {
+      throw RuntimeError(
+          expr.method, 'Undefined property \'${expr.method.lexeme}\'.');
+    }
+
+    return method.bind(object);
   }
 
   @override

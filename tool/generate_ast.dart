@@ -18,6 +18,7 @@ class GenerateAst {
       'Literal  : Object? value',
       "Logical  : Expr left, Token operator, Expr right",
       'Set  : Expr object, Token name, Expr value',
+      'Super : Token keyword, Token method',
       'This  : Token keyword',
       'Unary    : Token operator, Expr right',
       'Variable : Token name'
@@ -26,7 +27,7 @@ class GenerateAst {
     ]);
     _defineAst(outputDir, 'Stmt', [
       'Block   : List<Stmt> statements',
-      'Class  : Token name, List<LFunction> methods',
+      'Class  : Token name, Variable? superclass, List<LFunction> methods',
       'Expression  : Expr expression',
       "LFunction : Token name, List<Token> params, List<Stmt> body",
       'If   : Expr condition, Stmt thenBranch, Stmt? elseBranch',

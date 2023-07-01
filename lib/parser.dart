@@ -49,6 +49,13 @@ class Parser {
 
   Stmt _classDeclaration() {
     final name = _consume(TokenType.IDENTIFIER, "Expect class name.");
+
+    Variable? superclass;
+    if (_match([TokenType.LESS])) {
+      _consume(TokenType.IDENTIFIER, "Expect superclass name.");
+      superclass = Variable(_previous());
+    }
+
     _consume(TokenType.LEFT_BRACE, "Expect '{' before class body.");
 
     final methods = <LFunction>[];
@@ -61,7 +68,7 @@ class Parser {
     }
 
     _consume(TokenType.RIGHT_BRACE, "Expect '}' after class body.");
-    return Class(name, methods);
+    return Class(name, superclass, methods);
   }
 
   Stmt _function(String kind) {
@@ -403,6 +410,14 @@ class Parser {
 
     if (_match([TokenType.NUMBER, TokenType.STRING])) {
       return Literal(_previous().literal);
+    }
+
+    if (_match([TokenType.SUPER])) {
+      final keyword = _previous();
+      _consume(TokenType.DOT, "Expect '.' after 'super'.");
+      final method =
+          _consume(TokenType.IDENTIFIER, "Expect superclass method name.");
+      return Super(keyword, method);
     }
 
     if (_match([TokenType.THIS])) return This(_previous());

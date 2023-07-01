@@ -2,18 +2,18 @@ import 'interpreter.dart';
 import 'token.dart';
 
 class Environment {
-  final Environment? _enclosing;
+  final Environment? enclosing;
   final _values = <String, Object?>{};
 
-  Environment({required Environment? enclosing}) : _enclosing = enclosing;
+  Environment({required Environment? enclosing}) : enclosing = enclosing;
 
   Object? get(Token name) {
     if (_values.containsKey(name.lexeme)) {
       return _values[name.lexeme];
     }
 
-    if (_enclosing case var _enclosing?) {
-      return _enclosing.get(name);
+    if (enclosing case var enclosing?) {
+      return enclosing.get(name);
     }
 
     throw RuntimeError(name, "Undefined variable '${name.lexeme}'.");
@@ -29,8 +29,8 @@ class Environment {
       return;
     }
 
-    if (_enclosing case var _enclosing?) {
-      _enclosing.assign(name, value);
+    if (enclosing case var enclosing?) {
+      enclosing.assign(name, value);
       return;
     }
 
@@ -44,7 +44,7 @@ class Environment {
   Environment _ancestor(int distance) {
     var environment = this;
     for (var i = 0; i < distance; i++) {
-      environment = environment._enclosing!;
+      environment = environment.enclosing!;
     }
     return environment;
   }

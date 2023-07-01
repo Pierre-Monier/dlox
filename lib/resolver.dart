@@ -204,6 +204,19 @@ class Resolver implements ExprVisitor, StmtVisitor {
     _declare(stmt.name);
     _define(stmt.name);
 
+    if (stmt.superclass != null &&
+        stmt.name.lexeme == stmt.superclass!.name.lexeme) {
+      Lox.errorWithToken(
+          stmt.superclass!.name, 'A class cannot inherit from itself.');
+    }
+
+    if (stmt.superclass case var superclass?) {
+      _currentClass = ClassType.SUBCLASS;
+      _resolveExpr(superclass);
+      _beginScope();
+      _scopes.last.addAll({'super': true});
+    }
+
     _beginScope();
     _scopes.last.addAll({'this': true});
 
@@ -216,6 +229,10 @@ class Resolver implements ExprVisitor, StmtVisitor {
     }
 
     _endScope();
+
+    if (stmt.superclass != null) {
+      _endScope();
+    }
 
     _currentClass = enclosingClass;
   }
@@ -241,6 +258,19 @@ class Resolver implements ExprVisitor, StmtVisitor {
 
     _resolveLocal(expr, expr.keyword);
   }
+
+  @override
+  visitSuperExpr(Super expr) {
+    if (_currentClass == ClassType.NONE) {
+      Lox.errorWithToken(
+          expr.keyword, 'Cannot use \'super\' outside of a class.');
+    } else if (_currentClass != ClassType.SUBCLASS) {
+      Lox.errorWithToken(
+          expr.keyword, 'Cannot use \'super\' in a class with no superclass.');
+    }
+
+    _resolveLocal(expr, expr.keyword);
+  }
 }
 
 enum FunctionType {
@@ -253,4 +283,5 @@ enum FunctionType {
 enum ClassType {
   NONE,
   CLASS,
+  SUBCLASS,
 }

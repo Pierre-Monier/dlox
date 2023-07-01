@@ -6,11 +6,22 @@ import 'lox_instance.dart';
 class LoxClass implements LoxCallable {
   final String name;
   final Map<String, LoxFunction> _methods;
+  final LoxClass? superclass;
 
-  LoxClass(this.name, this._methods);
+  LoxClass(this.name, this.superclass, this._methods);
 
   LoxFunction? findMethod(String name) {
-    return _methods[name];
+    final method = _methods[name];
+
+    if (method != null) {
+      return method;
+    }
+
+    if (superclass case var superclass?) {
+      return superclass.findMethod(name);
+    }
+
+    return null;
   }
 
   @override
